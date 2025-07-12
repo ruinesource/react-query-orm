@@ -121,7 +121,16 @@ export const { q, ormm } = orm(
 
 export function getClusters() {
   return Promise.resolve({
-    data: [{ oki: "doki", id: "1", vms: [{ id: "1" }] }],
+    data: [{ oki: "doki", id: "1", vms: [{ id: "1", e: "a" }] }],
+  });
+}
+
+export function getClusterss() {
+  return Promise.resolve({
+    data: [
+      { oki: "doki", id: "1", vms: [{ id: "1" }] },
+      { oki: "doki", id: "2", vms: [{ id: "1" }] },
+    ],
   });
 }
 
