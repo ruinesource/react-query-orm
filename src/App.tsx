@@ -11,16 +11,29 @@ import {
 } from "./orm";
 import { queryClient } from ".";
 import g, { orderSym, parentQKSym } from "./lib/g";
-import { getEvtChanges, qkString, rmOutdatedRelations } from "./lib";
+import { getEvtChanges, qkString, applyRelations } from "./lib";
 
 function App() {
-  const c = useQuery({
-    queryKey: ["cluster", "1"],
-    queryFn: async () => {
-      await delay(800);
-      return getCluster("1");
-    },
-  });
+  // const c = useQuery({
+  //   queryKey: ["cluster", "1"],
+  //   queryFn: async () => {
+  //     return getCluster("1");
+  //   },
+  // });
+  // const r = useQuery({
+  //   queryKey: ["host", "1"],
+  //   queryFn: async () => {
+  //     await delay(200);
+  //     return getHost("1");
+  //   },
+  // });
+  // const c = useQuery({
+  //   queryKey: ["cluster", "1"],
+  //   queryFn: async () => {
+  //     await delay(800);
+  //     return getCluster("1");
+  //   },
+  // });
   // const r = useQuery({
   //   queryKey: ["host", "1"],
   //   queryFn: async () => {
@@ -46,16 +59,16 @@ function App() {
   //   gcTime: 0,
   // });
   // const [enabled, setEnabled] = useState(false);
-  const j = useQuery({
-    queryKey: ["clusters"],
-    queryFn: async () => {
-      await delay(400);
-      return getClusterss();
-    },
-    staleTime: 10,
-    gcTime: 0,
-    // enabled,
-  });
+  // const j = useQuery({
+  //   queryKey: ["clusters"],
+  //   queryFn: async () => {
+  //     await delay(400);
+  //     return getClusterss();
+  //   },
+  //   staleTime: 10,
+  //   gcTime: 0,
+  //   // enabled,
+  // });
   // useEffect(() => {
   //   setTimeout(() => setEnabled(true), 500);
   // }, []);
@@ -82,7 +95,7 @@ function App() {
           list = configItem.list(event.query.state.data);
           g.cache[event.query.queryKey[0]] = list;
         }
-        rmOutdatedRelations(st, list);
+        applyRelations();
 
         for (let key of g.evtChanges[orderSym]) {
           const { qk, diff } = g.evtChanges[key];

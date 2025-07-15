@@ -31,72 +31,66 @@ function setListChanges(qk: any, list: any) {
 
 function setQK(qk: any[], diff: any) {
   const st = qkString(qk);
-  g.evtChanges[orderSym].push(st);
-  g.evtChanges[st] = {
-    qk,
-    diff,
-    updated: false,
-  };
+
+  if (!g.evtChanges[st]) {
+    g.evtChanges[orderSym].push(st);
+    g.evtChanges[st] = {
+      qk,
+      diff,
+      updated: false,
+    };
+  } else
+    g.evtChanges[st].diff = {
+      ...g.evtChanges[st].diff,
+      ...diff,
+    };
   // @ts-expect-error
   const deps = ormm[qk[0]];
   if (deps) applyDeps(qk, deps, diff);
 }
 
 function applyDeps(qk: any, deps: any, diff: any, path: any[] = []) {
-  for (let depKeyt in deps) {
-    const depKey = depKeyt as keyof typeof deps;
-    const dep = deps[depKey];
-    const childDiff = diff?.[depKey];
-    if (!childDiff) continue;
-
-    if (typeof dep === "string") {
-      // @ts-expect-error
-      const childId = config[dep].id(childDiff);
-      const childQK = [dep, childId];
-      addChildDiff(qk, childQK, childDiff, [...path, depKey]);
-    } else if (typeof dep === "function") {
-      for (let i = 0; i < childDiff.length; i++) {
-        addChildDiff(qk, dep(childDiff[i]), childDiff[i], [...path, depKey, i]);
-      }
+  for (let key in deps) {
+    if (["string", "function"].includes(typeof deps[key])) {
+      applyDep(qk, key, deps[key], diff, [...path, key]);
     } else {
-      for (let key in dep) {
-        applyDeps(qk, dep[key], diff[key], [...path, depKey]);
-      }
+      if (diff) applyDeps(qk, deps[key], diff[key], [...path, key]);
     }
   }
 }
 
-export function rmOutdatedRelations(rootQK: string, list?: any[]) {
-  for (let parent in g.currentChilds) {
-    const currentList = parent === rootQK && list;
-    for (let child in g.childs[parent]) {
-      const prevPaths = g.childs[parent]?.[child];
-      if (!prevPaths) continue;
+function applyDep(
+  qk: any,
+  depKey: any,
+  dep: any,
+  parentDiff: any,
+  path: any[]
+) {
+  if (!parentDiff?.hasOwnProperty(depKey)) return;
 
-      const paths = g.currentChilds[parent][child];
-      for (let prevPath of prevPaths) {
-        const shouldRemove = paths
-          ? // eslint-disable-next-line no-loop-func
-            paths.some((path: any) =>
-              shouldRemoveRelationByPaths(
-                path,
-                prevPath,
-                g.evtChanges[parent]?.diff || currentList
-              )
-            )
-          : shouldRemoveRelationByDiff(
-              prevPath,
-              g.evtChanges[parent]?.diff || currentList
-            );
-        if (shouldRemove) {
-          removeRelation(
-            g.currentChilds[parentQKSym][parent],
-            parent,
-            child,
-            prevPath
-          );
-        }
-      }
+  const diff = parentDiff?.[depKey];
+  if (!diff) return;
+
+  if (typeof dep === "string") {
+    // @ts-expect-error
+    const childId = config[dep].id(diff);
+    const childQK = [dep, childId];
+    addChildDiff(qk, childQK, diff, path);
+  } else if (typeof dep === "function") {
+    addChildArrayDiffs(qk, diff, dep, path);
+  }
+}
+
+function addChildArrayDiffs(qk: any, childDiff: any, dep: any, path: any[]) {
+  for (let i = 0; i < childDiff.length; i++) {
+    const itemQK = dep(childDiff[i]);
+    addChildDiff(qk, itemQK, childDiff[i], [...path, i]);
+  }
+  const prev = getPath(g.cache[qk[0]]?.[qk[1]], path);
+  if ((prev?.length || 0) > childDiff.length) {
+    for (let i = childDiff.length; i < prev.length; i++) {
+      const childQK = dep(prev[i]);
+      removeRelation(qk, qkString(qk), qkString(childQK), [...path, i]);
     }
   }
 }
@@ -105,14 +99,7 @@ function addChildDiff(qk: any, childQK: any, childDiff: any, path: any[]) {
   const qkStr = qkString(qk);
   const childQKSt = qkString(childQK);
   addRelation(qk, qkStr, childQKSt, path);
-
-  if (!g.evtChanges[childQKSt]) setQK(childQK, childDiff);
-  else {
-    g.evtChanges[childQKSt].diff = {
-      ...g.evtChanges[childQKSt].diff,
-      ...childDiff,
-    };
-  }
+  setQK(childQK, childDiff);
 }
 
 export function qkString(x: (string | number | symbol)[]) {
@@ -128,7 +115,44 @@ function addRelation(parentQK: any, parent: string, child: string, path: Path) {
     } else g.currentChilds[parent][child].push(path);
     g.currentChilds[parentQKSym][parent] = parentQK;
   }
+}
 
+export function applyRelations() {
+  for (let parent in g.currentChilds) {
+    for (let child in g.childs[parent]) {
+      const prevPaths = g.childs[parent]?.[child];
+      if (!prevPaths) continue;
+
+      for (let prevPath of prevPaths) {
+        if (!isSameChildInPath(parent, prevPath)) {
+          removeRelation(
+            g.currentChilds[parentQKSym][parent],
+            parent,
+            child,
+            prevPath
+          );
+        }
+      }
+    }
+    for (let child in g.currentChilds[parent]) {
+      for (let path of g.currentChilds[parent][child]) {
+        applyRelation(
+          g.currentChilds[parentQKSym][parent],
+          parent,
+          child,
+          path
+        );
+      }
+    }
+  }
+}
+
+function applyRelation(
+  parentQK: any,
+  parent: string,
+  child: string,
+  path: Path
+) {
   if (hasPath(g.childs[parent]?.[child] || [], path)) return;
   if (!g.parents[child]) g.parents[child] = {};
   const pOrm = parentQK[0];
@@ -153,43 +177,68 @@ function removeRelation(
   child: string,
   path: Path
 ) {
+  if (!g.childs[parent]?.[child]) return;
   if (g.childs[parent][child].length === 1) {
     delete g.parents[child][parentQK[0]][parentQK[1]];
     delete g.childs[parent][child];
+    if (!Object.keys(g.parents[child][parentQK[0]]).length) {
+      delete g.parents[child][parentQK[0]];
+      if (!Object.keys(g.parents[child]).length) {
+        delete g.parents[child];
+      }
+    }
+    if (!Object.keys(g.childs[parent]).length) {
+      delete g.childs[parent];
+    }
   } else {
     g.parents[child][parentQK[0]][parentQK[1]] = g.parents[child][parentQK[0]][
       parentQK[1]
-    ].filter((p: any) => isSamePath(p, path));
-    g.childs[parent] = g.childs[parent].filter((p: any) => isSamePath(p, path));
+    ].filter((p: any) => !isSamePath(p, path));
+    g.childs[parent][child] = g.childs[parent][child].filter(
+      (p: any) => !isSamePath(p, path)
+    );
   }
+}
+
+function isSameChildInPath(parent: string, path: Path) {
+  const diff = g.evtChanges[parent]?.diff;
+  const itemParent = getPath(diff, path.slice(0, -1));
+  if (!itemParent) return true;
+  const parentQK = g.currentChilds[parentQKSym][parent];
+  const item = itemParent[path[path.length - 1]];
+  const prevItem = getPath(g.cache[parentQK[0]]?.[parentQK[1]], path);
+  // @ts-expect-error
+  const parentDeps = ormm[parentQK[0]];
+  const dep = Array.isArray(itemParent)
+    ? getPath(parentDeps, path.slice(0, -1))
+    : getPath(parentDeps, path);
+
+  if (typeof dep === "function") {
+    const childQK = item && dep(item);
+    const prevChildQK = prevItem && dep(prevItem);
+    return (
+      childQK?.[0] === prevChildQK?.[0] && childQK?.[1] === prevChildQK?.[1]
+    );
+  }
+  if (!itemParent.hasOwnProperty(path[path.length - 1])) return true;
+  // @ts-expect-error
+  const id = config[dep]?.id(item);
+  // @ts-expect-error
+  const prevId = config[dep]?.id(prevItem);
+  return id === prevId;
+}
+
+function getPath(inst: any, path: Path) {
+  let current = inst;
+  for (let i = 0; i < path.length; i++) {
+    if (!current) return;
+    current = current[path[i]];
+  }
+  return current;
 }
 
 function hasPath(paths: Path[], path: Path) {
   return paths.some((p) => isSamePath(p, path));
-}
-
-function shouldRemoveRelationByPaths(x: Path, y: Path, diff: any) {
-  return (
-    x.length === y.length &&
-    x.some((k, i) => {
-      const isLast = i === x.length - 1;
-      if (!isLast && diff) diff = diff[k];
-      return k !== y[i] || (isLast && (!diff || !diff.hasOwnProperty(k)));
-    })
-  );
-}
-
-function shouldRemoveRelationByDiff(prevPath: Path, diff: any) {
-  for (let i = 0; i < prevPath.length; i++) {
-    if (prevPath.length === 1 || i === prevPath.length - 2) {
-      if (Array.isArray(i ? diff[prevPath.length] : diff)) {
-        return false;
-      } else return diff?.hasOwnProperty(prevPath[i]);
-    }
-    if (!diff) return false;
-    diff = diff[prevPath[i]];
-  }
-  return false;
 }
 
 function isSamePath(x: Path, y: Path) {
