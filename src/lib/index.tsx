@@ -1,4 +1,4 @@
-import g, { parentQKSym, orderSym } from "./g";
+import g, { orderSym } from "./g";
 import { config, ormm } from "../orm";
 
 export function getEvtChanges(event: any) {
@@ -16,8 +16,11 @@ export function getEvtChanges(event: any) {
 }
 
 function setListChanges(qk: any, list: any) {
-  if (!g.cache[qk[0]]) g.cache[qk[0]] = list;
   const parentSt = qkString(qk);
+  g.qkSt[parentSt] = qk;
+  const qkArgSt = qkArgString(qk[1]);
+  if (!g.cache[qk[0]]) g.cache[qk[0]] = {};
+  if (!g.cache[qk[0]][qkArgSt]) g.cache[qk[0]][qkArgSt] = list;
 
   for (let i = 0; i < list.length; i++) {
     const x = list[i];
@@ -31,6 +34,7 @@ function setListChanges(qk: any, list: any) {
 
 function setQK(qk: any[], diff: any) {
   const st = qkString(qk);
+  g.qkSt[st] = qk;
 
   if (!g.evtChanges[st]) {
     g.evtChanges[orderSym].push(st);
@@ -90,7 +94,7 @@ function addChildArrayDiffs(qk: any, childDiff: any, dep: any, path: any[]) {
   if ((prev?.length || 0) > childDiff.length) {
     for (let i = childDiff.length; i < prev.length; i++) {
       const childQK = dep(prev[i]);
-      removeRelation(qk, qkString(qk), qkString(childQK), [...path, i]);
+      removeRelation(qkString(qk), qkString(childQK), [...path, i]);
     }
   }
 }
@@ -102,8 +106,27 @@ function addChildDiff(qk: any, childQK: any, childDiff: any, path: any[]) {
   setQK(childQK, childDiff);
 }
 
-export function qkString(x: (string | number | symbol)[]) {
-  return x.join("");
+export function qkString(x: any[]) {
+  return x.reduce((y, z) => y + qkArgString(z) + "|", "");
+}
+
+export function qkArgString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(qkArgString).join(",")}]`;
+  } else if (
+    value &&
+    typeof value === "object" &&
+    value.constructor === Object
+  ) {
+    const keys = Object.keys(value).sort();
+    return `{${keys
+      .map(
+        (key) => `${JSON.stringify(key)}:${qkArgString((value as any)[key])}`
+      )
+      .join(",")}}`;
+  } else {
+    return JSON.stringify(value);
+  }
 }
 
 function addRelation(parentQK: any, parent: string, child: string, path: Path) {
@@ -113,7 +136,6 @@ function addRelation(parentQK: any, parent: string, child: string, path: Path) {
     } else if (!g.currentChilds[parent][child]) {
       g.currentChilds[parent][child] = [path];
     } else g.currentChilds[parent][child].push(path);
-    g.currentChilds[parentQKSym][parent] = parentQK;
   }
 }
 
@@ -125,61 +147,42 @@ export function applyRelations() {
 
       for (let prevPath of prevPaths) {
         if (!isSameChildInPath(parent, prevPath)) {
-          removeRelation(
-            g.currentChilds[parentQKSym][parent],
-            parent,
-            child,
-            prevPath
-          );
+          removeRelation(parent, child, prevPath);
         }
       }
     }
     for (let child in g.currentChilds[parent]) {
       for (let path of g.currentChilds[parent][child]) {
-        applyRelation(
-          g.currentChilds[parentQKSym][parent],
-          parent,
-          child,
-          path
-        );
+        applyRelation(parent, child, path);
       }
     }
   }
 }
 
-function applyRelation(
-  parentQK: any,
-  parent: string,
-  child: string,
-  path: Path
-) {
+function applyRelation(parent: string, child: string, path: Path) {
   if (hasPath(g.childs[parent]?.[child] || [], path)) return;
   if (!g.parents[child]) g.parents[child] = {};
+  const parentQK = g.qkSt[parent];
   const pOrm = parentQK[0];
-  const pId = parentQK[1];
-  if (pId) {
-    if (!g.parents[child][pOrm]) g.parents[child][pOrm] = {};
-    if (!g.parents[child][pOrm][pId]) g.parents[child][pOrm][pId] = [path];
-    else g.parents[child][pOrm][pId].push(path);
-  } else {
-    if (!g.parents[child][pOrm]) g.parents[child][pOrm] = [path];
-    else g.parents[child][pOrm].push(path);
-  }
+  const pQKArg = parentQK[1];
+  const qkArgSt = qkArgString(pQKArg);
+  const pId = g.cache[pOrm]?.[qkArgSt] ? qkArgSt : parentQK[1];
+  if (!g.parents[child][pOrm]) g.parents[child][pOrm] = {};
+  if (!g.parents[child][pOrm][pId]) g.parents[child][pOrm][pId] = [path];
+  else g.parents[child][pOrm][pId].push(path);
 
   if (!g.childs[parent]) g.childs[parent] = {};
   if (!g.childs[parent][child]) g.childs[parent][child] = [path];
   else g.childs[parent][child].push(path);
 }
 
-function removeRelation(
-  parentQK: any,
-  parent: string,
-  child: string,
-  path: Path
-) {
+function removeRelation(parent: string, child: string, path: Path) {
   if (!g.childs[parent]?.[child]) return;
+  const parentQK = g.qkSt[parent];
+  const qkArgSt = qkArgString(parentQK[1]);
+  const pId = g.cache[parentQK[0]]?.[qkArgSt] ? qkArgSt : parentQK[1];
   if (g.childs[parent][child].length === 1) {
-    delete g.parents[child][parentQK[0]][parentQK[1]];
+    delete g.parents[child][parentQK[0]][pId];
     delete g.childs[parent][child];
     if (!Object.keys(g.parents[child][parentQK[0]]).length) {
       delete g.parents[child][parentQK[0]];
@@ -191,8 +194,8 @@ function removeRelation(
       delete g.childs[parent];
     }
   } else {
-    g.parents[child][parentQK[0]][parentQK[1]] = g.parents[child][parentQK[0]][
-      parentQK[1]
+    g.parents[child][parentQK[0]][pId] = g.parents[child][parentQK[0]][
+      pId
     ].filter((p: any) => !isSamePath(p, path));
     g.childs[parent][child] = g.childs[parent][child].filter(
       (p: any) => !isSamePath(p, path)
@@ -204,7 +207,7 @@ function isSameChildInPath(parent: string, path: Path) {
   const diff = g.evtChanges[parent]?.diff;
   const itemParent = getPath(diff, path.slice(0, -1));
   if (!itemParent) return true;
-  const parentQK = g.currentChilds[parentQKSym][parent];
+  const parentQK = g.qkSt[parent];
   const item = itemParent[path[path.length - 1]];
   const prevItem = getPath(g.cache[parentQK[0]]?.[parentQK[1]], path);
   // @ts-expect-error
@@ -222,9 +225,9 @@ function isSameChildInPath(parent: string, path: Path) {
   }
   if (!itemParent.hasOwnProperty(path[path.length - 1])) return true;
   // @ts-expect-error
-  const id = config[dep]?.id(item);
+  const id = item && config[dep]?.id(item);
   // @ts-expect-error
-  const prevId = config[dep]?.id(prevItem);
+  const prevId = prevItem && config[dep]?.id(prevItem);
   return id === prevId;
 }
 

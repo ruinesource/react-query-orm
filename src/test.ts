@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-function useTest() {
+export function useTest() {
   const c = useQuery({
     queryKey: ["cluster", "1"],
     queryFn: async () => {
@@ -49,7 +49,7 @@ function getCluster(id: string) {
           ],
         },
       },
-      id,
+      id: "1",
     },
   });
 }
@@ -57,7 +57,7 @@ function getCluster(id: string) {
 function getHost(id: string) {
   return Promise.resolve({
     data: {
-      id,
+      id: "1",
       host: "host",
       e: "host_2",
       vm: {
