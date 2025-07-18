@@ -65,6 +65,7 @@ function sub(config: any, queryClient: any) {
   return queryClient.getQueryCache().subscribe((event: any) => {
     if (event.type !== "updated" || event.query.state.status !== "success")
       return;
+    console.log("oke");
 
     const st = qkString(event.query.queryKey);
     if (g.evtChanges[st] && !g.evtChanges[st].updated) {
@@ -95,12 +96,12 @@ function sub(config: any, queryClient: any) {
 
         const itemParents = g.parents[qkStr];
         if (itemParents) {
-          for (let ormName in itemParents) {
-            for (let id in itemParents[ormName]) {
-              const parentCacheItem = g.cache[ormName]?.[id];
-              if (Array.isArray(g.cache[ormName]?.[id])) continue;
+          for (let pOrmName in itemParents) {
+            for (let pQkArgSt in itemParents[pOrmName]) {
+              const parentCacheItem = g.cache[pOrmName]?.[pQkArgSt];
+              if (Array.isArray(g.cache[pOrmName]?.[pQkArgSt])) continue;
               if (!parentCacheItem) continue;
-              for (let path of itemParents[ormName][id]) {
+              for (let path of itemParents[pOrmName][pQkArgSt]) {
                 cacheItems.push(clonePath(parentCacheItem, path));
               }
             }
@@ -119,7 +120,6 @@ function sub(config: any, queryClient: any) {
         const cacheItems = [g.cache[qk[0]][qk[1]]];
         const itemParents = g.parents[qkStr];
 
-        // обновление родителей родителей (сейчас только 1 уровень)
         if (itemParents) {
           for (let pOrmName in itemParents) {
             for (let pQkArgSt in itemParents[pOrmName]) {
@@ -142,12 +142,31 @@ function sub(config: any, queryClient: any) {
               const parentParents = g.parents[pQkSt];
               if (parentParents) {
                 for (let ppOrmName in parentParents) {
-                  for (let pParentQkArgSt in parentParents[ppOrmName]) {
-                    if (Array.isArray(g.cache[ppOrmName][pParentQkArgSt])) {
+                  for (let ppQkArgSt in parentParents[ppOrmName]) {
+                    if (Array.isArray(g.cache[ppOrmName][ppQkArgSt])) {
                       if (!arrs[ppOrmName])
-                        arrs[ppOrmName] = { [pParentQkArgSt]: true };
-                      else arrs[ppOrmName][pParentQkArgSt] = true;
-                      continue;
+                        arrs[ppOrmName] = { [ppQkArgSt]: true };
+                      else arrs[ppOrmName][ppQkArgSt] = true;
+                    } else {
+                      for (let path of parentParents[ppOrmName][ppQkArgSt]) {
+                        g.cache[ppOrmName][ppQkArgSt] = putToPath(
+                          g.cache[ppOrmName][ppQkArgSt],
+                          g.cache[pOrmName][pQkArgSt],
+                          path
+                        );
+                        // const data = queryClient.getQueryData(qk);
+                        // const ppQkSt = qkString([ppOrmName, ppQkArgSt]);
+                        // if (data && ppQkSt !== st) {
+                        // const rqData = config[qk[0]].toRes(
+                        //   cacheItems[0],
+                        //   data
+                        // );
+                        // queryClient.setQueryData(qk, rqData);
+                        // if (!g.evtChanges[ppQkSt]) {
+                        //   g.evtChanges[ppQkSt] = { updated: false };
+                        // }
+                        // } else g.evtChanges[key].updated = true;
+                      }
                     }
                   }
                 }
