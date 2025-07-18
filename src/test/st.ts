@@ -1,19 +1,15 @@
-import { useEffect } from "react";
-import { q, sub } from "./orm";
-import { useTest } from "./test";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from ".";
+import { q, sub } from "../orm";
+import { useEffect } from "react";
+import { queryClient } from "..";
 
-function App() {
+export function useTest() {
   useEffect(() => sub(queryClient), []);
-  useTest();
+
   useQuery(q.cluster("1"));
   useQuery(q.host("1"));
   useQuery(q.cluster("1"));
   useQuery(q.host("1"));
   useQuery(q.vm("1"));
   useQuery(q.clusters());
-  return <></>;
 }
-
-export default App;

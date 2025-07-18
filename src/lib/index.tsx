@@ -28,7 +28,7 @@ export function reactQueryOrm<C extends Config, K extends keyof C = keyof C>(
       };
     } else {
       // @ts-expect-error
-      q[key] = (params) => ({
+      q[key] = (params: any) => ({
         queryKey: [key, params],
         queryFn: item.many,
       });
@@ -48,15 +48,15 @@ export function one<
   One extends (a: any) => any,
   X extends (x: AwaitedReturn<One>) => any,
   Id extends (x: ReturnType<X>) => any,
-  Put = (x: Partial<ReturnType<X>>, res: AwaitedReturn<One>) => any
->(one: One, x: X, put?: Put, id?: Id) {
-  return { one, x, put, id: id || (defaultId as Id) };
+  ToRes = (x: Partial<ReturnType<X>>, res: AwaitedReturn<One>) => any
+>(one: One, x: X, toRes?: ToRes, id?: Id) {
+  return { one, x, toRes, id: id || (defaultId as Id) };
 }
 
 export function many<
   Many extends (...args: any[]) => any,
   List extends (res: AwaitedReturn<Many>) => any,
-  ToRes extends (list: ReturnType<List>, res: ReturnType<List>) => any
+  ToRes extends (list: ReturnType<List>, res: ReturnType<Many>) => any
 >(many: Many, list: List, toRes: ToRes) {
   return { many, list, toRes };
 }
@@ -119,22 +119,36 @@ function sub(config: any, queryClient: any) {
         const cacheItems = [g.cache[qk[0]][qk[1]]];
         const itemParents = g.parents[qkStr];
 
+        // обновление родителей родителей (сейчас только 1 уровень)
         if (itemParents) {
-          for (let parentOrmName in itemParents) {
-            for (let qkArgSt in itemParents[parentOrmName]) {
-              if (Array.isArray(g.cache[parentOrmName][qkArgSt])) {
-                if (!arrs[parentOrmName])
-                  arrs[parentOrmName] = { [qkArgSt]: true };
-                else arrs[parentOrmName][qkArgSt] = true;
+          for (let pOrmName in itemParents) {
+            for (let pQkArgSt in itemParents[pOrmName]) {
+              if (Array.isArray(g.cache[pOrmName][pQkArgSt])) {
+                if (!arrs[pOrmName]) arrs[pOrmName] = { [pQkArgSt]: true };
+                else arrs[pOrmName][pQkArgSt] = true;
                 continue;
               } else {
-                for (let id in itemParents[parentOrmName]) {
-                  for (let path of itemParents[parentOrmName][id]) {
-                    g.cache[parentOrmName][id] = putToPath(
-                      g.cache[parentOrmName][id],
+                for (let id in itemParents[pOrmName]) {
+                  for (let path of itemParents[pOrmName][id]) {
+                    g.cache[pOrmName][id] = putToPath(
+                      g.cache[pOrmName][id],
                       cacheItems[0],
                       path
                     );
+                  }
+                }
+              }
+              const pQkSt = qkString([pOrmName, pQkArgSt]);
+              const parentParents = g.parents[pQkSt];
+              if (parentParents) {
+                for (let ppOrmName in parentParents) {
+                  for (let pParentQkArgSt in parentParents[ppOrmName]) {
+                    if (Array.isArray(g.cache[ppOrmName][pParentQkArgSt])) {
+                      if (!arrs[ppOrmName])
+                        arrs[ppOrmName] = { [pParentQkArgSt]: true };
+                      else arrs[ppOrmName][pParentQkArgSt] = true;
+                      continue;
+                    }
                   }
                 }
               }
@@ -144,7 +158,7 @@ function sub(config: any, queryClient: any) {
 
         const data = queryClient.getQueryData(qk);
         if (data && qkStr !== st) {
-          const rqData = config[qk[0]].put(cacheItems[0], data);
+          const rqData = config[qk[0]].toRes(cacheItems[0], data);
           queryClient.setQueryData(qk, rqData);
         } else g.evtChanges[key].updated = true;
       }
@@ -157,6 +171,7 @@ function sub(config: any, queryClient: any) {
           for (let childQKSt in arrChilds) {
             for (let idx of arrChilds[childQKSt]) {
               const childQK = g.qkSt[childQKSt];
+              // todo: свежий массив + подстановка его в rqData через toRes
               g.cache[ormName][qkArgSt][idx] = g.cache[childQK[0]][childQK[1]];
             }
           }

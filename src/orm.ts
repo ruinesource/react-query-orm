@@ -6,7 +6,7 @@ import {
   getLocalStorages,
   getVm,
 } from "./api";
-import { many, one, reactQueryOrm } from "./lib";
+import { one, many, reactQueryOrm } from "./lib";
 
 const config = {
   cluster: one(
@@ -17,7 +17,7 @@ const config = {
   clusters: many(
     getClusters,
     (res) => res.data,
-    (data) => ({ data: { data } })
+    (data) => ({ data })
   ),
   host: one(
     getHost,

@@ -1,35 +1,80 @@
 import { useQuery } from "@tanstack/react-query";
+import { one, reactQueryOrm } from "../lib";
+import { queryClient } from "..";
+import { useEffect } from "react";
 
 export function useTest() {
-  const c = useQuery({
-    queryKey: ["cluster", "1"],
-    queryFn: async () => {
-      return getCluster("1");
-    },
-  });
-  const r = useQuery({
-    queryKey: ["host", "1"],
-    queryFn: async () => {
-      await delay(200);
-      return getHost("1");
-    },
+  useEffect(() => sub(queryClient), []);
+
+  const cluster = useQuery(q.cluster("1"));
+  useQuery({
+    ...q.host("1"),
+    enabled: !!cluster.data,
   });
 }
+
+const config = {
+  cluster: one(
+    getCluster,
+    (res) => res.data,
+    (x, res) => ({ data: { ...res.data, ...x } })
+  ),
+  host: one(
+    getHost,
+    (res) => res.data,
+    (x, res) => ({ data: { ...res.data, ...x } })
+  ),
+  vm: one(
+    getVm,
+    (res) => res.data,
+    (x, res) => ({ data: { ...res.data, ...x } })
+  ),
+  inner: one(
+    getInner,
+    (res) => res.data,
+    (x, res) => ({ data: { ...res.data, ...x } })
+  ),
+};
+
+const { q, sub } = reactQueryOrm(config, {
+  cluster: {
+    host: "host",
+    vms: (x) => ["vm", x.id],
+    deep: {
+      host: "host",
+      arr: (x) => ["inner", x.id],
+    },
+    very: {
+      deep: {
+        host: "host",
+        arr: (x) => ["inner", x.id],
+      },
+    },
+  },
+  host: {
+    vm: "vm",
+    vms: (x) => ["vm", x.id],
+    cluster: "cluster",
+  },
+  vm: {},
+  inner: {},
+});
 
 function getCluster(id: string) {
   return Promise.resolve({
     data: {
+      id,
       e: "cluster",
-      vms: [
-        { id: "1", e: "vm" },
-        { id: "2", e: "vm2" },
-      ],
       host: {
         id: "1",
         e: "host",
         vm: { id: "1", e: "vm" },
         vms: [{ id: "2", e: "vm2" }],
       },
+      vms: [
+        { id: "1", e: "vm" },
+        { id: "2", e: "vm2" },
+      ],
       deep: {
         e: "deep",
         host: { id: "2", e: "host2" },
@@ -49,7 +94,6 @@ function getCluster(id: string) {
           ],
         },
       },
-      id: "1",
     },
   });
 }
@@ -57,7 +101,7 @@ function getCluster(id: string) {
 function getHost(id: string) {
   return Promise.resolve({
     data: {
-      id: "1",
+      id,
       host: "host",
       e: "host_2",
       vm: {
@@ -65,6 +109,7 @@ function getHost(id: string) {
         e: "vm_2",
         vm: "vm",
       },
+      vms: [{ id: "2", e: "vm2_2" }],
       cluster: {
         id: "1",
         e: "cluster_2",
@@ -90,6 +135,18 @@ function getHost(id: string) {
   });
 }
 
-function delay(ms: number = 200) {
-  return new Promise((r) => setTimeout(() => r(1), ms));
+function getVm(id: string) {
+  return {
+    data: {
+      id,
+      e: "vm",
+      vm: "vm",
+    },
+  };
+}
+
+function getInner(id: string) {
+  return {
+    data: { id, e: "inner" },
+  };
 }
