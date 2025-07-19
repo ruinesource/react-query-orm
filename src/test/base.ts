@@ -16,22 +16,26 @@ const config = {
   cluster: one(
     getCluster,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   host: one(
     getHost,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   vm: one(
     getVm,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   inner: one(
     getInner,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
 };
 
@@ -59,8 +63,9 @@ const { q } = reactQueryOrm(config, {
   inner: {},
 });
 
-function getCluster(id: string) {
-  return Promise.resolve({
+async function getCluster(id: string) {
+  await delay(0);
+  return {
     data: {
       id,
       e: "cluster",
@@ -94,11 +99,12 @@ function getCluster(id: string) {
         },
       },
     },
-  });
+  };
 }
 
-function getHost(id: string) {
-  return Promise.resolve({
+async function getHost(id: string) {
+  await delay(200);
+  return {
     data: {
       id,
       host: "host",
@@ -131,10 +137,11 @@ function getHost(id: string) {
         },
       },
     },
-  });
+  };
 }
 
-function getVm(id: string) {
+async function getVm(id: string) {
+  await delay(400);
   return {
     data: {
       id,
@@ -144,8 +151,13 @@ function getVm(id: string) {
   };
 }
 
-function getInner(id: string) {
+async function getInner(id: string) {
+  await delay(600);
   return {
     data: { id, e: "inner" },
   };
+}
+
+function delay(ms = 200) {
+  return new Promise((res) => setTimeout(res, ms));
 }

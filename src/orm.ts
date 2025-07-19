@@ -12,31 +12,37 @@ const config = {
   cluster: one(
     getCluster,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   clusters: many(
     getClusters,
     (res) => res.data,
-    (data) => ({ data })
+    (data) => ({ data }),
+    (list) => ({ data: list })
   ),
   host: one(
     getHost,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   localStorages: many(
     getLocalStorages,
     (res) => res.data,
-    (data) => ({ data })
+    (data) => ({ data }),
+    (list) => ({ data: list })
   ),
   vm: one(
     getVm,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   inner: one(
     getInner,
     (res) => res,
+    (x) => x,
     (x) => x
   ),
 };

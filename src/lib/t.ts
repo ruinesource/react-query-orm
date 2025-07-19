@@ -63,8 +63,12 @@ export type AwaitedReturn<T> = T extends (...args: any[]) => Promise<infer R>
 type RecordKey = string | number | symbol;
 
 type ConfigItem =
-  | { one: (...args: any[]) => any; x: (arg: any) => any }
-  | { many: (...args: any[]) => any };
+  | {
+      one: (...args: any[]) => any;
+      x: (arg: any) => any;
+      toPlaceholder: (x: any) => any;
+    }
+  | { many: (...args: any[]) => any; toPlaceholder: (x: any) => any };
 
 type OneXResult<T> = T extends { x: (arg: any) => any }
   ? ReturnType<T["x"]>

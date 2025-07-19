@@ -1,20 +1,6 @@
-export function getClusters() {
-  return Promise.resolve({
-    data: [{ oki: "doki", id: "1", vms: [{ id: "1", e: "a" }] }],
-  });
-}
-
-export function getClusterss() {
-  return Promise.resolve({
-    data: [
-      { oki: "doki", id: "1", vms: [{ id: "1" }] },
-      { oki: "doki", id: "2", vms: [{ id: "1" }] },
-    ],
-  });
-}
-
-export function getCluster(id: string) {
-  return Promise.resolve({
+export async function getCluster(id: string) {
+  await delay(0);
+  return {
     data: {
       e: "cluster",
       vms: [
@@ -51,11 +37,12 @@ export function getCluster(id: string) {
       },
       id,
     },
-  });
+  };
 }
 
-export function getHost(id: string) {
-  return Promise.resolve({
+export async function getHost(id: string) {
+  await delay(200);
+  return {
     data: {
       id,
       host: "host_2",
@@ -95,26 +82,40 @@ export function getHost(id: string) {
         },
       },
     },
-  });
+  };
 }
 
-export function getInner() {
-  return { id: "1", e: "inner" };
-}
-
-export function getVm(id: string) {
-  return Promise.resolve({
+export async function getVm(id: string) {
+  await delay(400);
+  return {
     data: {
       e: "vmm",
       id,
       cluster: { id: "1" },
       host: { id: "1", e: "hostt" },
     },
-  });
+  };
 }
 
-export function getLocalStorages(hostId: string) {
-  return Promise.resolve({
+export async function getClusters() {
+  await delay(600);
+  return {
+    data: [{ oki: "doki", id: "1", vms: [{ id: "1", e: "a" }] }],
+  };
+}
+
+export async function getInner() {
+  await delay(800);
+  return { id: "1", e: "inner" };
+}
+
+export async function getLocalStorages(hostId: string) {
+  await delay(1000);
+  return {
     data: { e: "d" },
-  });
+  };
+}
+
+function delay(ms = 200) {
+  return new Promise((res) => setTimeout(res, ms));
 }

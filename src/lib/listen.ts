@@ -53,9 +53,10 @@ export function listen(queryClient: any) {
         list = configItem.list(event.query.state.data);
         g.cache[event.query.queryKey[0]][event.query.queryKey[1]] = list;
       }
-      applyRelations();
-      const arrs = {} as any;
 
+      applyRelations();
+
+      const arrs = {} as any;
       for (let key in g.evtChanges) {
         const { qk, diff } = g.evtChanges[key];
         if (!g.cache[qk[0]]) g.cache[qk[0]] = {};
@@ -100,7 +101,6 @@ export function listen(queryClient: any) {
         }
       }
       for (let qkSt in g.updates) {
-        if (qkSt === st) continue;
         const qk = g.updates[qkSt];
         queryClient.setQueryData(
           qk,

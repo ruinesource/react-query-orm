@@ -20,22 +20,26 @@ const config = {
   cluster: one(
     getCluster,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   clusters: many(
     getClusters,
     (res) => res.data,
+    (list) => ({ data: list }),
     (list) => ({ data: list })
   ),
   host: one(
     getHost,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   vm: one(
     getVm,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
 };
 
@@ -57,7 +61,7 @@ function getClusters(arg: { sort: "asc" | "desc" }) {
 }
 
 async function getClustersAsc() {
-  await delay();
+  await delay(0);
   return {
     data: (
       await Promise.all([
@@ -71,7 +75,7 @@ async function getClustersAsc() {
 }
 
 async function getClustersDesc() {
-  await delay();
+  await delay(200);
   return {
     data: (
       await Promise.all([getCluster("3"), getCluster("2"), getCluster("5")])
@@ -80,7 +84,7 @@ async function getClustersDesc() {
 }
 
 async function getCluster(id: string) {
-  await delay();
+  await delay(400);
   return {
     data: {
       e: "cluster" + id,
@@ -102,7 +106,8 @@ async function getCluster(id: string) {
   };
 }
 
-function getHost(id: string) {
+async function getHost(id: string) {
+  await delay(600);
   return {
     data: {
       id,
@@ -116,7 +121,8 @@ function getHost(id: string) {
   };
 }
 
-function getVm(id: string) {
+async function getVm(id: string) {
+  await delay(800);
   return { data: { id: "1", e: "vm" } };
 }
 

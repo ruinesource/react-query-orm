@@ -20,10 +20,12 @@ export function reactQueryOrm<C extends Config, K extends keyof C = keyof C>(
     // @ts-expect-error
     q[key] = (param: any) => {
       const qkArgSt = qkArgString(param);
+      const qk = [key, qkArgSt];
+      const x = g.cache[key]?.[qkArgSt];
       return {
-        queryKey: [key, qkArgSt],
+        queryKey: qk,
         queryFn: () => queryFn(param),
-        placeholderData: g.cache[key]?.[qkArgSt],
+        placeholderData: x && config[key].toPlaceholder(x),
       };
     };
   }
@@ -41,17 +43,19 @@ export function one<
   One extends (a: any) => any,
   X extends (x: AwaitedReturn<One>) => any,
   Id extends (x: ReturnType<X>) => any,
-  ToRes = (x: Partial<ReturnType<X>>, res: AwaitedReturn<One>) => any
->(one: One, x: X, toRes?: ToRes, id?: Id) {
-  return { one, x, toRes, id: id || (defaultId as Id) };
+  ToRes = (x: Partial<ReturnType<X>>, res: AwaitedReturn<One>) => any,
+  ToPlaceholder = (x: Partial<ReturnType<X>>) => any
+>(one: One, x: X, toRes: ToRes, toPlaceholder: ToPlaceholder, id?: Id) {
+  return { one, x, toRes, toPlaceholder, id: id || (defaultId as Id) };
 }
 
 export function many<
   Many extends (...args: any[]) => any,
   List extends (res: AwaitedReturn<Many>) => any,
-  ToRes extends (list: ReturnType<List>, res: ReturnType<Many>) => any
->(many: Many, list: List, toRes: ToRes) {
-  return { many, list, toRes };
+  ToRes extends (list: ReturnType<List>, res: ReturnType<Many>) => any,
+  ToPlaceholder = (list: ReturnType<List>) => any
+>(many: Many, list: List, toRes: ToRes, toPlaceholder: ToPlaceholder) {
+  return { many, list, toPlaceholder, toRes };
 }
 
 const defaultId = (x: any) => x?.id;

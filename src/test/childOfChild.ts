@@ -20,17 +20,20 @@ const config = {
   a: one(
     getA,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   b: one(
     getB,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
   c: one(
     getC,
     (res) => res.data,
-    (x, res) => ({ data: { ...res.data, ...x } })
+    (x, res) => ({ data: { ...res.data, ...x } }),
+    (x) => ({ data: x })
   ),
 };
 
@@ -44,33 +47,40 @@ const { q } = reactQueryOrm(config, {
   c: {},
 });
 
-function getA(id: string) {
-  return Promise.resolve({
+async function getA(id: string) {
+  await delay(0);
+  return {
     data: {
       id,
       b: {
         id: "1",
       },
     },
-  });
+  };
 }
 
-function getB(id: string) {
-  return Promise.resolve({
+async function getB(id: string) {
+  await delay(200);
+  return {
     data: {
       id,
       c: {
         id: "1",
       },
     },
-  });
+  };
 }
 
-function getC(id: string) {
+async function getC(id: string) {
+  await delay(400);
   return {
     data: {
       id,
       e: "new prop",
     },
   };
+}
+
+function delay(ms = 200) {
+  return new Promise((res) => setTimeout(res, ms));
 }

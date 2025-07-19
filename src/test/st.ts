@@ -6,9 +6,18 @@ import { useReactQueryOrm } from "../lib";
 export function useTest() {
   useReactQueryOrm(queryClient);
 
-  useQuery(q.cluster("1"));
-  useQuery(q.host("1"));
-  useQuery(q.host("1"));
-  useQuery(q.vm("1"));
-  useQuery(q.clusters());
+  const a = useQuery(q.cluster("1"));
+  const b = useQuery({
+    ...q.host("1"),
+    enabled: !!a.data,
+  });
+  const c = useQuery({
+    ...q.vm("1"),
+    enabled: !!b.data,
+  });
+  // useQuery({
+  //   ...q.clusters(),
+  //   enabled: !!b.data,
+  // });
+  console.log(a.data, b.data, c.data);
 }
