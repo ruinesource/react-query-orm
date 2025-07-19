@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { one, reactQueryOrm } from "../lib";
+import { one, reactQueryOrm, useReactQueryOrm } from "../lib";
 import { queryClient } from "..";
-import { useEffect } from "react";
 
 export function useTest() {
-  useEffect(() => sub(queryClient), []);
+  useReactQueryOrm(queryClient);
 
   const a = useQuery(q.a("1"));
   const b = useQuery({
@@ -35,7 +34,7 @@ const config = {
   ),
 };
 
-const { q, sub } = reactQueryOrm(config, {
+const { q } = reactQueryOrm(config, {
   a: {
     b: "b",
   },

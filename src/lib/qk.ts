@@ -1,8 +1,8 @@
 export function qkString(x: any[]) {
-  return x.reduce((y, z) => y + qkArgString(z) + "|", "");
+  return x[0] + "!+|" + x[1];
 }
 
-export function qkArgString(value: unknown): string {
+export function qkArgString(value: any): string {
   if (Array.isArray(value)) {
     return `[${value.map(qkArgString).join(",")}]`;
   } else if (value && value.constructor === Object) {

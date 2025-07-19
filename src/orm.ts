@@ -41,7 +41,7 @@ const config = {
   ),
 };
 
-export const { q, sub } = reactQueryOrm(config, {
+export const { q } = reactQueryOrm(config, {
   cluster: {
     host: "host",
     vms: (x) => ["vm", x.id],

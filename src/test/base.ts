@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { one, reactQueryOrm } from "../lib";
+import { one, reactQueryOrm, useReactQueryOrm } from "../lib";
 import { queryClient } from "..";
-import { useEffect } from "react";
 
 export function useTest() {
-  useEffect(() => sub(queryClient), []);
+  useReactQueryOrm(queryClient);
 
   const cluster = useQuery(q.cluster("1"));
   useQuery({
@@ -36,7 +35,7 @@ const config = {
   ),
 };
 
-const { q, sub } = reactQueryOrm(config, {
+const { q } = reactQueryOrm(config, {
   cluster: {
     host: "host",
     vms: (x) => ["vm", x.id],
