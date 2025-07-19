@@ -15,9 +15,9 @@ export function useTest() {
     ...q.vm("1"),
     enabled: !!b.data,
   });
-  // useQuery({
-  //   ...q.clusters(),
-  //   enabled: !!b.data,
-  // });
+  useQuery({
+    ...q.clusters(),
+    enabled: !!b.data,
+  });
   console.log(a.data, b.data, c.data);
 }

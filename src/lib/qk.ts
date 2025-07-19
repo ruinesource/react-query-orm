@@ -1,18 +1,13 @@
 export function qkString(x: any[]) {
-  return x[0] + "!+|" + x[1];
+  return x[0] + "|" + x[1];
 }
 
-export function qkArgString(value: any): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(qkArgString).join(",")}]`;
-  } else if (value && value.constructor === Object) {
-    const keys = Object.keys(value).sort();
-    return `{${keys
-      .map(
-        (key) => `${JSON.stringify(key)}:${qkArgString((value as any)[key])}`
-      )
+export function qkArgString(arg: any): string {
+  if (Array.isArray(arg)) return `[${arg.map(qkArgString).join(",")}]`;
+  else if (arg && arg.constructor === Object) {
+    return `{${Object.keys(arg)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${qkArgString((arg as any)[key])}`)
       .join(",")}}`;
-  } else {
-    return JSON.stringify(value);
-  }
+  } else return JSON.stringify(arg);
 }

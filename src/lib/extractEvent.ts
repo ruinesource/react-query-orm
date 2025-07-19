@@ -3,47 +3,43 @@ import { getPath } from "./path";
 import { qkArgString, qkString } from "./qk";
 import { addRelation, removeRelation } from "./relations";
 
-export function getEvtChanges(event: any) {
+export function extractEvent(event: any) {
   const { queryKey, state } = event.query;
+  g.event = { diff: {}, child: {} };
 
-  g.evtChanges = {} as any;
   const item = g.config[queryKey[0]];
-  if (item.many) setListChanges(queryKey, item.list(state.data));
+  if (item.many) setList(queryKey, item.list(state.data));
   else setQK(queryKey, item.x(state.data));
 
-  return g.evtChanges;
+  return g.event;
 }
 
 function setQK(qk: any[], diff: any) {
   const st = qkString(qk);
-  g.qkSt[st] = qk;
+  g.stQK[st] = qk;
 
-  if (!g.evtChanges[st]) {
-    g.evtChanges[st] = {
-      qk,
-      diff,
-    };
+  if (!g.event.diff[st]) {
+    g.event.diff[st] = diff;
   } else
-    g.evtChanges[st].diff = {
-      ...g.evtChanges[st].diff,
+    g.event.diff[st] = {
+      ...g.event.diff[st],
       ...diff,
     };
   const deps = g.orm[qk[0]];
   if (deps) applyDeps(qk, deps, diff);
 }
 
-function setListChanges(qk: any, list: any) {
-  const listSt = qkString(qk);
-  g.qkSt[listSt] = qk;
-  if (!g.cache[qk[0]]) g.cache[qk[0]] = {};
-  if (!g.cache[qk[0]][qk[1]]) g.cache[qk[0]][qk[1]] = list;
+function setList(qk: any, list: any) {
+  const st = qkString(qk);
+  g.stQK[st] = qk;
+  if (!g.cache[st]) g.cache[st] = list;
 
   for (let i = 0; i < list.length; i++) {
     const x = list[i];
     const itemQK = g.orm[qk[0]](x);
     itemQK[1] = qkArgString(itemQK[1]);
-    const st = qkString(itemQK);
-    addRelation(listSt, st, [i]);
+    const childSt = qkString(itemQK);
+    addRelation(st, childSt, [i]);
     setQK(itemQK, x);
   }
 }
@@ -71,8 +67,8 @@ function applyDep(
   if (!diff) return;
 
   if (typeof dep === "string") {
-    const childId = g.config[dep].id(diff);
-    const childQK = [dep, qkArgString(childId)];
+    const childArgString = qkArgString(g.config[dep].id(diff));
+    const childQK = [dep, childArgString];
     addChildDiff(qk, childQK, diff, path);
   } else if (typeof dep === "function") {
     addChildArrayDiffs(qk, diff, dep, path);
@@ -80,9 +76,9 @@ function applyDep(
 }
 
 function addChildDiff(qk: any, childQK: any, childDiff: any, path: any[]) {
-  const qkStr = qkString(qk);
-  const childQKSt = qkString(childQK);
-  addRelation(qkStr, childQKSt, path);
+  const st = qkString(qk);
+  const childSt = qkString(childQK);
+  addRelation(st, childSt, path);
   setQK(childQK, childDiff);
 }
 
@@ -92,12 +88,13 @@ function addChildArrayDiffs(qk: any, childDiff: any, dep: any, path: any[]) {
     itemQK[1] = qkArgString(itemQK[1]);
     addChildDiff(qk, itemQK, childDiff[i], [...path, i]);
   }
-  const prev = getPath(g.cache[qk[0]]?.[qk[1]], path);
+  const st = qkString(qk);
+  const prev = getPath(g.cache[st], path);
   if ((prev?.length || 0) > childDiff.length) {
     for (let i = childDiff.length; i < prev.length; i++) {
       const childQK = dep(prev[i]);
       childQK[1] = qkArgString(childQK[1]);
-      removeRelation(qkString(qk), qkString(childQK), [...path, i]);
+      removeRelation(st, qkString(childQK), [...path, i]);
     }
   }
 }

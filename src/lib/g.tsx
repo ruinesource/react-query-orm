@@ -4,10 +4,11 @@ export const g = {
   cache: {},
   parents: {},
   childs: {},
-  qkSt: {},
-  evtChanges: {},
-  updates: {},
-  currentChilds: {},
+  stQK: {},
+  event: {
+    diff: {},
+    child: {},
+  },
 } as any;
 
 console.log(g);
